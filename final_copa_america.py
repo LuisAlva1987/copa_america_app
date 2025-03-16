@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from pandas import json_normalize
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
@@ -40,7 +41,7 @@ html_title =  """
        border-radius:6px;
        }
        </style>
-       <center><h1 class="title-test">Copa America Final</h1></center>"""
+       <center><h1 class="title-test">Copa America Final Game</h1></center>"""
 st.markdown(html_title, unsafe_allow_html=True)
 
 ## Dashboard Subtitle
