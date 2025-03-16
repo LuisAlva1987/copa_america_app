@@ -19,7 +19,12 @@ sb.matches(competition_id = 223, season_id = 282).sort_values(by='match_date')
 
 # Get final data
 final = sb.events(match_id = 3943077)
-
+final = sb.events(match_id = 3943077)
+final[['x', 'y']] = final['location'].apply(pd.Series) ## pass beginning location
+final[['shot_end_x', 'shot_end_y', 'shot_height']] = final['shot_end_location'].apply(pd.Series) ## shot end location
+final[['pass_end_x', 'pass_end_y']] = final['pass_end_location'].apply(pd.Series) ## pass end location
+final['recovery_location'] = np.where(final['pass_end_location'].isna(), final['location'], final['pass_end_location'])
+final[['recovery_x', 'recovery_y']] = final['recovery_location'].apply(pd.Series) ## pass location
 
 # Game Events 
 final['type'].value_counts().reset_index(name='event_count')
@@ -64,126 +69,336 @@ def filter_data(final, team, player):
 ## Run the function
 filtered_df = filter_data(final, team, player)
 
-## Set up for first three columns
+## Set up for first row three columns
 col1, col2, col3=st.columns(3) 
 ###############################################################
+
 ##PASSES
 with col1:
-       st.write("PASSES")
+       st.write("PASSES")      
+       player_passes = filtered_df.loc[(filtered_df['type'] == 'Pass'),
+                                      ['timestamp', 'player', 'pass_recipient', 'pass_outcome', 'x', 'y', 'pass_end_x', 'pass_end_y']]
+       if not player_passes['player'].empty:
 ## Create figure and pitch
-       pitch = VerticalPitch(
-       half=False,
-       pitch_type = 'statsbomb',
-       axis=True,
-       #label=True,
-       #tick=True,
-       goal_type='box'
-       )
+              pitch = VerticalPitch(
+              half=False,
+              pitch_type = 'statsbomb',
+              axis=True,
+              goal_type='box'
+              )
 
-       fig, ax = pitch.draw(figsize=(10, 10))
-       ax.title.set_text('Passes')
+              fig, ax = pitch.draw(figsize=(10, 10))
 
-# Player complete passes 
-       player_complete_pases_first = filtered_df.loc[(filtered_df['type'] == 'Pass')        
-                                          & (filtered_df['pass_outcome'].isna()), ##
-                                          ['timestamp', 'player', 'pass_recipient', 'pass_outcome', 'location', 'pass_end_location']]
-       player_complete_pases_first[['x', 'y']] = player_complete_pases_first['location'].apply(pd.Series) ## pass beginning location
-       player_complete_pases_first[['end_x', 'end_y']] = player_complete_pases_first['pass_end_location'].apply(pd.Series) ## pass end location
-## Arrows for complete passes
-       player_complete_pases_first = player_complete_pases_first[player_complete_pases_first['player'] == player]
-       pitch.arrows(player_complete_pases_first['x'], player_complete_pases_first['y'], player_complete_pases_first['end_x'], player_complete_pases_first['end_y'], ax=ax,
+## Player complete passes 
+              player_complete_passes = player_passes.loc[(player_passes['pass_outcome'].isna()), 
+                                                 ['timestamp', 'player', 'pass_recipient', 'pass_outcome', 'x', 'y', 'pass_end_x', 'pass_end_y']]
+              player_complete_passes = player_complete_passes[player_complete_passes['player'] == player]
+              pitch.arrows(player_complete_passes['x'], player_complete_passes['y'], player_complete_passes['pass_end_x'], player_complete_passes['pass_end_y'], ax=ax,
               label='Complete Passes', color='green', width=2)
 
-# Player incomplete passes 
-       player_incomplete_pases_first = filtered_df.loc[(filtered_df['type'] == 'Pass') 
-                                          & (~filtered_df['pass_outcome'].isna()), 
-                                          ['timestamp', 'player', 'pass_recipient', 'pass_outcome', 'location', 'pass_end_location']]
-       player_incomplete_pases_first[['x', 'y']] = player_incomplete_pases_first['location'].apply(pd.Series) ## pass beginning location
-       player_incomplete_pases_first[['end_x', 'end_y']] = player_incomplete_pases_first['pass_end_location'].apply(pd.Series) ## pass end location
-## Arrows for imcomplete pases
-       player_incomplete_pases_first = player_incomplete_pases_first[player_incomplete_pases_first['player'] == player]
-       pitch.arrows(player_incomplete_pases_first['x'], player_incomplete_pases_first['y'], player_incomplete_pases_first['end_x'], player_incomplete_pases_first['end_y'], ax=ax,
-            label='Complete Passes', color='red', width=2)
+## Player incomplete passes 
+              player_incomplete_pases = player_passes.loc[(~player_passes['pass_outcome'].isna()), 
+                                          ['timestamp', 'player', 'pass_recipient', 'pass_outcome', 'x', 'y', 'pass_end_x', 'pass_end_y']]
+              player_incomplete_pases = player_incomplete_pases[player_incomplete_pases['player'] == player]
+              pitch.arrows(player_incomplete_pases['x'], player_incomplete_pases['y'], player_incomplete_pases['pass_end_x'], player_incomplete_pases['pass_end_y'], ax=ax,
+              label='Incomplete Passes', color='red', width=2)
+              plt.legend(loc="upper left")
+              st.pyplot(fig)
 
-       plt.legend(loc="lower left")
-       st.pyplot(fig)
+       else:
+              pitch= VerticalPitch (
+              half = False,
+              pitch_type = 'statsbomb',
+              axis = True,
+              goal_type='box'
+              )
+              fig, ax = pitch.draw(figsize=(10, 10))
+              plt.legend(loc="upper left", title='No passes made by player')
+              st.pyplot(fig)
 
 
-####################################
+#############################################################
+
 ## BALL RECOVERY
 with col2:
        st.write("BALL RECOVERY")
-## Create figure and pitch
-       pitch = VerticalPitch(
-       half=False,
-       pitch_type = 'statsbomb',
-       axis=True,
-       #label=True,
-       #tick=True,
-       goal_type='box'
-       )
-
-       fig, ax = pitch.draw(figsize=(10, 10))
-       ax.title.set_text('Ball Recovery')
-## Player ball recovery
        player_ball_recovery = filtered_df.loc[(filtered_df['type'].isin(['Interception', 'Ball Recovery']))
                                               | (filtered_df['pass_type'].isin(['Recovery', 'Interception'])),
-                                              ['timestamp', 'player', 'type', 'pass_type', 'pass_recipient', 'possession', 'pass_outcome', 'location', 'pass_end_location']]
+                                              ['timestamp', 'player', 'type', 'pass_type', 'pass_recipient', 'possession', 'pass_outcome', 'recovery_x', 'recovery_y']]
 
-       player_ball_recovery['recovery_location'] = np.where(player_ball_recovery['pass_end_location'].isna(), player_ball_recovery['location'], player_ball_recovery['pass_end_location'])
-       player_ball_recovery[['x', 'y']] = player_ball_recovery['recovery_location'].apply(pd.Series) ## pass location
+       if not player_passes['player'].empty:
+## Create figure and pitch
+              pitch = VerticalPitch(
+              half=False,
+              pitch_type = 'statsbomb',
+              axis=True,
+              goal_type='box'
+              )
+              fig, ax = pitch.draw(figsize=(10, 10))
+## Player ball recovery
+              player_ball_recovery = player_ball_recovery[player_ball_recovery['player'] == player]
+              pitch.scatter(player_ball_recovery['recovery_x'], player_ball_recovery['recovery_y'], label='Recovered Balls', color='green', ax=ax)
 
-       recovery_pass_type = filtered_df.loc[filtered_df['pass_type'].isin(['Recovery', 'Interception']), 
-                                           ['timestamp', 'player', 'type', 'pass_type', 'pass_recipient', 'possession', 'pass_outcome', 'location', 'pass_end_location']]
+              plt.legend(loc="upper left")
+              st.pyplot(fig) 
+       else:
+              pitch= VerticalPitch (
+              half = False,
+              pitch_type = 'statsbomb',
+              axis = True,
+              goal_type='box'
+              )
+              fig, ax = pitch.draw(figsize=(10, 10))
+              plt.legend(loc="upper left", title='No balls recovered by player')
+              st.pyplot(fig)
 
-       recovery_pass_type['recovery_location'] = np.where(recovery_pass_type['pass_end_location'].isna(), recovery_pass_type['location'], recovery_pass_type['pass_end_location'])
-       recovery_pass_type[['x', 'y']] = recovery_pass_type['recovery_location'].apply(pd.Series)
+#############################################################
 
-       player_ball_recovery = player_ball_recovery[player_ball_recovery['player'] == player]
-       pitch.scatter(player_ball_recovery['x'], player_ball_recovery['y'], label='Recover Balls', color='green', ax=ax)
+## SHOTS
+with col3:
+ ## Player saved shots
+       st.write("SHOTS")      
+       player_shots = filtered_df.loc[(filtered_df['type'] == 'Shot')
+                                      & (filtered_df['shot_outcome'].isin(['Saved', 'Blocked', 'Off T', 'Goal', 'Wayward'])),
+                                      ['possession_team', 'player', 'type', 'shot_outcome', 'x', 'y', 'shot_end_x', 'shot_end_y']]
 
-       recovery_pass_type = recovery_pass_type[recovery_pass_type['player'] == player]
-       pitch.scatter(recovery_pass_type['x'], recovery_pass_type['y'], label='Recover Balls', color='green', ax=ax)
+       if not player_shots['player'].empty:
+## Create figure and pitch
+              pitch = VerticalPitch(
+              half =False,
+              pitch_type = 'statsbomb',
+              axis = True,
+              goal_type='box'
+              )
+              fig, ax = pitch.draw(figsize=(10, 10))
+## Player saved shots
+              player_saved_shots = player_shots.loc[(player_shots['shot_outcome'] == 'Saved'),
+                                      ['possession_team', 'player', 'type', 'shot_outcome', 'x', 'y', 'shot_end_x', 'shot_end_y']]
+              player_saved_shots = player_saved_shots[player_saved_shots['player'] == player]
+              pitch.scatter(player_saved_shots['x'], player_saved_shots['y'], color='yellow', ax=ax)
+              pitch.arrows(player_saved_shots['x'], player_saved_shots['y'], player_saved_shots['shot_end_x'], player_saved_shots['shot_end_y'], label='Saved Shots', color='yellow', width=2, ax=ax)
 
-       st.pyplot(fig)
-##########################################################################################
-# Event type per Team
-colombia_events = final[final['possession_team'] == 'Colombia']['type'].value_counts().reset_index(name = 'colombia')
-argentina_events = final[final['possession_team'] == 'Argentina']['type'].value_counts().reset_index(name = 'argentina')
-final_events = pd.merge(colombia_events, argentina_events, on='type')
+## Player blocked shots 
+              player_blocked_shots = player_shots.loc[(player_shots['shot_outcome'] == 'Blocked'),
+                                             ['possession_team', 'player', 'type', 'shot_outcome', 'x', 'y', 'shot_end_x', 'shot_end_y']]
+              player_blocked_shots = player_blocked_shots[player_blocked_shots['player'] == player]
+              pitch.scatter(player_blocked_shots['x'], player_blocked_shots['y'], color='blue', ax=ax)
+              pitch.arrows(player_blocked_shots['x'], player_blocked_shots['y'], player_blocked_shots['shot_end_x'], player_blocked_shots['shot_end_y'], label='Blocked Shots', color='blue', width=2, ax=ax)
 
-col4, col5=st.columns([1, 2.2])
+## Player Off T
+              player_offt_shots = player_shots.loc[(player_shots['shot_outcome'] == 'Off T'),
+                                          ['possession_team', 'player', 'type', 'shot_outcome', 'x', 'y', 'shot_end_x', 'shot_end_y']]
+              player_offt_shots = player_offt_shots[player_offt_shots['player'] == player]
+              pitch.scatter(player_offt_shots['x'], player_offt_shots['y'], color='red', ax=ax)
+              pitch.arrows(player_offt_shots['x'], player_offt_shots['y'], player_offt_shots['shot_end_x'], player_offt_shots['shot_end_y'], label='Off T Shots', color='red', width=2, ax=ax)
+
+## Player Goals
+              player_goals = player_shots.loc[(player_shots['shot_outcome'] == 'Goal'),
+                                      ['possession_team', 'player', 'type', 'shot_outcome', 'x', 'y', 'shot_end_x', 'shot_end_y']]
+              player_goals = player_goals[player_goals['player'] == player]
+              pitch.scatter(player_goals['x'], player_goals['y'], color='green', ax=ax)
+              pitch.arrows(player_goals['x'], player_goals['y'], player_goals['shot_end_x'], player_goals['shot_end_y'], label='Goals', color='green', width=2, ax=ax)
+
+## Wayward Shot
+              player_wayward_shots = player_shots.loc[(player_shots['shot_outcome'] == 'Wayward'),
+                                            ['possession_team', 'player', 'type', 'shot_outcome', 'x', 'y', 'shot_end_x', 'shot_end_y']]
+              player_wayward_shots = player_wayward_shots[player_wayward_shots['player'] == player]
+              pitch.scatter(player_wayward_shots['x'], player_wayward_shots['y'], color='purple', ax=ax)
+              pitch.arrows(player_wayward_shots['y'], player_wayward_shots['y'], player_wayward_shots['shot_end_x'], player_wayward_shots['shot_end_y'], label='Wayward Shots', color='purple', width=2, ax=ax)
+       
+              plt.legend(loc="upper left")
+              st.pyplot(fig)
+       else:
+              pitch= VerticalPitch (
+              half = False,
+              pitch_type = 'statsbomb',
+              axis = True,
+              goal_type='box'
+              )
+              fig, ax = pitch.draw(figsize=(10, 10))
+              plt.legend(loc="upper left", title='No shots made by player')
+              st.pyplot(fig)
+
+#############################################################
+## Set up for second row three columns
+col4, col5, col6=st.columns(3) 
+
+#############################################################
+
+## FOULS 
 with col4:
-       final_events_table = final_events.set_index('type')
-       st.write("Event Type per Team")
-       st.dataframe(final_events_table)
+       st.write("FOULS")      
+       player_fouls = filtered_df.loc[(filtered_df['type'] == 'Foul Committed'),
+                                      ['player', 'x', 'y']]
+       if not player_fouls['player'].empty:
+## Create figure and pitch
+              pitch = VerticalPitch(
+              half =False,
+              pitch_type = 'statsbomb',
+              axis = True,
+              goal_type='box'
+              )
+              fig, ax = pitch.draw(figsize=(10, 10))    
+## Player fouls
+              player_fouls = player_fouls[player_fouls['player'] == player]
+              pitch.scatter(player_fouls['x'], player_fouls['y'], label='Foul Committed', color='red', ax=ax)
 
-# Events type per team barchart
+              plt.legend(loc="upper left")
+              st.pyplot(fig) 
+       else:
+              pitch= VerticalPitch (
+              half = False,
+              pitch_type = 'statsbomb',
+              axis = True,
+              goal_type='box'
+              )
+              fig, ax = pitch.draw(figsize=(10, 10))
+              plt.legend(loc="upper left", title='No Foul Committed by Player')
+              st.pyplot(fig)       
+
+
+#############################################################
+
+## PLAYER HEATMAP  
 with col5:
-       fig = px.bar(final_events, x= "type", y=["colombia", "argentina"], labels = {"type" : "Event Type", "value": "Event Count"}, 
-             title= "Event Type Per Team", barmode='group', height=500, template="gridon", color_discrete_sequence=["red", "#66d9ff"])
-# Change leyend lebels and tile
-       fig.update_layout(legend_title_text="Teams")
-       new = {'colombia':'Colombia', 'argentina': 'Argentina'}
-       fig.for_each_trace(lambda t: t.update(name = new[t.name]))
-       st.plotly_chart(fig, use_container_width=True)
+       st.write("PLAYER HEATMAP")      
+       player_heatmap = filtered_df[['player', 'x', 'y']]
+       if not player_heatmap['player'].empty:
+## Create figure and pitch
+              pitch = VerticalPitch(
+              half =False,
+              pitch_type = 'statsbomb',
+              axis = True,
+              goal_type='box'
+              )
+              fig, ax = pitch.draw(figsize=(10, 10))  
+## Player heatmap
+              player_heatmap = player_heatmap[player_heatmap['player'] == player]
+              pitch.kdeplot(player_heatmap['x'], player_heatmap['y'], ax=ax, levels=100, shade=True, zorder=-1, shade_lowest=True, cmap='OrRd')     
 
-col6, col7, col8=st.columns(3)     
+       ###plt.legend(loc="upper left")
+              st.pyplot(fig) 
+       else:
+              pitch= VerticalPitch (
+              half = False,
+              pitch_type = 'statsbomb',
+              axis = True,
+              goal_type='box'
+              )
+              fig, ax = pitch.draw(figsize=(10, 10))
+              ##plt.legend(loc="upper left", title='No Player Activity')
+              st.pyplot(fig)  
+
+#############################################################
+
+## PLAYER HEATMAP  
 with col6:
-        possession_count = final.groupby(['possession', 'possession_team'])['possession_team'].count().reset_index(name='possession_count')
-        possession_count = possession_count.groupby('possession_team')['possession'].count().reset_index(name='possession_count')
-        st.write("Possesion Count by Team")
-        st.table(possession_count) 
+       st.write("HEATMAP SENT PASSES")   
+       pass_heatmap = filtered_df.loc[(filtered_df['type'] == 'Pass') & (filtered_df['pass_outcome'].isna()), ['player', 'type', 'x', 'y']]
+       if not pass_heatmap['player'].empty:
+## Create figure and pitch
+              pitch = VerticalPitch(
+              half =False,
+              pitch_type = 'statsbomb',
+              axis = True,
+              goal_type='box'
+              )
+              fig, ax = pitch.draw(figsize=(10, 10))  
+## Player pass heatmap
+              pass_heatmap = pass_heatmap[pass_heatmap['player'] == player]
+              pitch.kdeplot(pass_heatmap['x'], pass_heatmap['y'], ax=ax, levels=100, shade=True, zorder=-1, shade_lowest=True, cmap='OrRd')     
 
-with col7: 
-       playing_time = round(final['duration'].sum()/60, 2)
-       st.write("Total Playing Team")
-       st.write(playing_time) 
+              ###plt.legend(loc="upper left")
+              st.pyplot(fig) 
+       else:
+              pitch= VerticalPitch (
+              half = False,
+              pitch_type = 'statsbomb',
+              axis = True,
+              goal_type='box'
+              )
+              fig, ax = pitch.draw(figsize=(10, 10))
+              ##plt.legend(loc="upper left", title='No Player Activity')
+              st.pyplot(fig)  
 
+
+#############################################################
+## Set up for third row three columns
+col7, col8, col9 =st.columns(3) 
+
+#############################################################
+
+## PLAYER FORWARD & BACK PASSES
+with col7:
+       st.write("FORWARD & BACK PASSES")   
+       pases = filtered_df.loc[(filtered_df['type'] == 'Pass') & (filtered_df['pass_outcome'].isna()), ['player', 'x', 'y', 'pass_end_x', 'pass_end_y']]
+
+       if not pases['player'].empty:
+## Create figure and pitch
+              pitch = VerticalPitch(
+              half =False,
+              pitch_type = 'statsbomb',
+              axis = True,
+              goal_type='box'
+              )
+              fig, ax = pitch.draw(figsize=(10, 10))
+## Player forward passes
+              forward = pases.loc[(final['x'] < final['pass_end_x']), ['player', 'x', 'y', 'pass_end_x', 'pass_end_y']]
+              forward = forward[forward['player'] == player]
+              pitch.arrows(forward['x'], forward['y'], forward['pass_end_x'], forward['pass_end_y'], label='Passes Forward', color='green', width=2, ax=ax)
+
+## Player back passes
+              back = pases.loc[(final['x'] > final['pass_end_x']), ['player', 'x', 'y', 'pass_end_x', 'pass_end_y']]
+              back = back[back['player'] == player]
+              pitch.arrows(back['x'], back['y'], back['pass_end_x'], back['pass_end_y'], label='Passes Forward', color='red', width=2, ax=ax)
+
+              plt.legend(loc="upper left")
+              st.pyplot(fig) 
+
+       else:
+              pitch= VerticalPitch (
+              half = False,
+              pitch_type = 'statsbomb',
+              axis = True,
+              goal_type='box'
+              )
+              fig, ax = pitch.draw(figsize=(10, 10))
+              ##plt.legend(loc="upper left", title='No Player Activity')
+              st.pyplot(fig)
+
+#############################################################
+
+## GOAL/SHOT PASSES
 with col8:
-       playing_time_by_team = round(final.groupby('possession_team')['duration'].sum()/60, 2).reset_index(name = 'possesion_time') 
-       st.write("Playing Time by Team")
-       st.table(playing_time_by_team) 
+       st.write("GOAL/SHOT PASSES")
+       goal_passes = final.loc[(final['type'].isin(['Pass', 'Shot'])), ['type', 'shot_outcome', 'player', 'pass_recipient', 'index', 'x', 'y', 'pass_end_x', 'pass_end_y']].sort_values(by = 'index')
+       goal_passes['shoter'] = goal_passes['player'].shift(-1)
+       goal_passes['type_after'] = goal_passes['type'].shift(-1)
+       goal_passes['shot_outcome_after'] = goal_passes['shot_outcome'].shift(-1)
+       if not goal_passes['player'].empty:
+## Create figure and pitch
+              pitch = VerticalPitch(
+              half =False,
+              pitch_type = 'statsbomb',
+              axis = True,
+              goal_type='box'
+              )
+              fig, ax = pitch.draw(figsize=(10, 10))
+## Player goal/shots passes
+              passer = goal_passes.loc[(goal_passes['type'] == 'Pass') & (goal_passes['type_after'] == 'Shot'),['player', 'shot_outcome_after', 'x', 'y', 'pass_end_x', 'pass_end_y']]
+              passer = passer[passer['player'] == player]
+              pitch.arrows(passer['x'], passer['y'], passer['pass_end_x'], passer['pass_end_y'], label='Goal/Shot Passes', color='green', width=2, ax=ax)
 
+              plt.legend(loc="upper left")
+              st.pyplot(fig)
 
-
+       else:
+              pitch= VerticalPitch (
+              half = False,
+              pitch_type = 'statsbomb',
+              axis = True,
+              goal_type='box'
+              )
+              fig, ax = pitch.draw(figsize=(10, 10))
+              plt.legend(loc="upper left", title='No Player Passes')
+              st.pyplot(fig)
