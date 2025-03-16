@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from pandas import json_normalize
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
