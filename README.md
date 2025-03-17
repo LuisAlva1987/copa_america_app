@@ -11,6 +11,6 @@ In this analysis, I use a match events dataset to explore key individual player 
 * Forward & Back Passes
 * Goal & Shots Passes 
 
-This is the link to the streamlit app: [Copa America Final Game](https://copaamericaapp-g9q2tsyi9btz8m2yfpapp4q.streamlit.app/)
+This is the link to the interactive streamlit app: [Copa America Final Game](https://copaamericaapp-g9q2tsyi9btz8m2yfpapp4q.streamlit.app/)
 
-
+Feel free to share your thoughts. I'm open to suggestions on how to enhance the app or ways to expand its functionality. 
