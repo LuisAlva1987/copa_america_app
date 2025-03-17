@@ -2,7 +2,7 @@ streamlit
 pandas
 numpy
 matplotlib
-plotly\
+plotly
 seaborn
 mplsoccer
 requests
