@@ -75,9 +75,27 @@ col1, col2, col3=st.columns(3)
 
 ##PASSES
 with col1:
-       st.write("PASSES")      
+       st.write("PASSES")
        player_passes = filtered_df.loc[(filtered_df['type'] == 'Pass'),
                                       ['timestamp', 'player', 'pass_recipient', 'pass_outcome', 'x', 'y', 'pass_end_x', 'pass_end_y']]
+       
+       col1_1, col1_2=st.columns(2)
+       with col1_1:
+              with st.container(border=True):
+                     player_complete_passes = player_passes.loc[(player_passes['pass_outcome'].isna()), 
+                                                        ['timestamp', 'player', 'pass_recipient', 'pass_outcome', 'x', 'y', 'pass_end_x', 'pass_end_y']]
+                     player_complete_passes = player_complete_passes[player_complete_passes['player'] == player]
+                     player_complete_passes_count = len(player_complete_passes)
+                     st.metric(label="Complete Passes", value = player_complete_passes_count) 
+
+       with col1_2: 
+              with st.container(border=True):
+                     player_incomplete_pases = player_passes.loc[(~player_passes['pass_outcome'].isna()), 
+                                                 ['timestamp', 'player', 'pass_recipient', 'pass_outcome', 'x', 'y', 'pass_end_x', 'pass_end_y']]
+                     player_incomplete_pases = player_incomplete_pases[player_incomplete_pases['player'] == player]
+                     player_incomplete_pases_count = len(player_incomplete_pases)
+                     st.metric(label="Incomplete Passes", value = player_incomplete_pases_count)
+
        if not player_passes['player'].empty:
 ## Create figure and pitch
               pitch = VerticalPitch(
