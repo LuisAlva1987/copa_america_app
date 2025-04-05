@@ -144,6 +144,11 @@ with col2:
                                               | (filtered_df['pass_type'].isin(['Recovery', 'Interception'])),
                                               ['timestamp', 'player', 'type', 'pass_type', 'pass_recipient', 'possession', 'pass_outcome', 'recovery_x', 'recovery_y']]
 
+       with st.container(border=True):
+                     player_ball_recovery = player_ball_recovery[player_ball_recovery['player'] == player]
+                     player_ball_recovery_count = len(player_ball_recovery) 
+                     st.metric(label="Ball Recovery", value = player_ball_recovery_count)            
+
        if not player_passes['player'].empty:
 ## Create figure and pitch
               pitch = VerticalPitch(
