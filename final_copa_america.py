@@ -26,8 +26,6 @@ copa_america_events = pd.concat(events, ignore_index=True)
 
 
 # Get final data
-copa_america_events = sb.events(match_id = 3943077)
-copa_america_events = sb.events(match_id = 3943077)
 copa_america_events[['x', 'y']] = copa_america_events['location'].apply(pd.Series) ## pass beginning location
 copa_america_events[['shot_end_x', 'shot_end_y', 'shot_height']] = copa_america_events['shot_end_location'].apply(pd.Series) ## shot end location
 copa_america_events[['pass_end_x', 'pass_end_y']] = copa_america_events['pass_end_location'].apply(pd.Series) ## pass end location
