@@ -12,22 +12,30 @@ pd.set_option('display.max_columns', None)
 from statsbombpy import sb
 
 # Download compatition data set to find Copa America
-sb.competitions()
+matches = sb.competitions()
 
 # Command to select matches from the Copa America and identify final
-sb.matches(competition_id = 223, season_id = 282).sort_values(by='match_date')
+copa_america = sb.matches(competition_id = 223, season_id = 282).sort_values(by='match_date')
+
+events = []
+for match_id in copa_america['match_id']:
+    match_events = sb.events(match_id)
+    events.append(match_events)
+
+copa_america_events = pd.concat(events, ignore_index=True)
+
 
 # Get final data
-final = sb.events(match_id = 3943077)
-final = sb.events(match_id = 3943077)
-final[['x', 'y']] = final['location'].apply(pd.Series) ## pass beginning location
-final[['shot_end_x', 'shot_end_y', 'shot_height']] = final['shot_end_location'].apply(pd.Series) ## shot end location
-final[['pass_end_x', 'pass_end_y']] = final['pass_end_location'].apply(pd.Series) ## pass end location
-final['recovery_location'] = np.where(final['pass_end_location'].isna(), final['location'], final['pass_end_location'])
-final[['recovery_x', 'recovery_y']] = final['recovery_location'].apply(pd.Series) ## pass location
+copa_america_events = sb.events(match_id = 3943077)
+copa_america_events = sb.events(match_id = 3943077)
+copa_america_events[['x', 'y']] = copa_america_events['location'].apply(pd.Series) ## pass beginning location
+copa_america_events[['shot_end_x', 'shot_end_y', 'shot_height']] = copa_america_events['shot_end_location'].apply(pd.Series) ## shot end location
+copa_america_events[['pass_end_x', 'pass_end_y']] = copa_america_events['pass_end_location'].apply(pd.Series) ## pass end location
+copa_america_events['recovery_location'] = np.where(copa_america_events['pass_end_location'].isna(), copa_america_events['location'], copa_america_events['pass_end_location'])
+copa_america_events[['recovery_x', 'recovery_y']] = copa_america_events['recovery_location'].apply(pd.Series) ## pass location
 
 # Game Events 
-final['type'].value_counts().reset_index(name='event_count')
+copa_america_events['type'].value_counts().reset_index(name='event_count')
 
 st.set_page_config(layout="wide")
 
@@ -40,7 +48,7 @@ html_title =  """
        border-radius:6px;
        }
        </style>
-       <center><h1 class="title-test">Copa America Final Game</h1></center>"""
+       <center><h1 class="title-test">Copa America </h1></center>"""
 st.markdown(html_title, unsafe_allow_html=True)
 
 ## Dashboard Subtitle
@@ -55,19 +63,19 @@ html_subtitle =  """
 st.markdown(html_subtitle, unsafe_allow_html=True)
 
 ## Select boxes
-team = st.selectbox('Select a team', final['team'].sort_values().unique(), index=None)
-player = st.selectbox('Select a player', final[final['team'] == team]['player'].sort_values().unique())
+team = st.selectbox('Select a team', copa_america_events['team'].sort_values().unique(), index=None)
+player = st.selectbox('Select a player', copa_america_events[copa_america_events['team'] == team]['player'].sort_values().unique())
 
 ## Create a filter function
-def filter_data(final, team, player):
+def filter_data(copa_america_events, team, player):
        if team:
-              final  = final[final['team'] == team]
+              copa_america_events  = copa_america_events[copa_america_events['copa_america_events'] == team]
        if player:
-              final = final[final['player'] == player]
-       return  final
+              copa_america_events = copa_america_events[copa_america_events['player'] == player]
+       return  copa_america_events
 
 ## Run the function
-filtered_df = filter_data(final, team, player)
+filtered_df = filter_data(copa_america_events, team, player)
 
 ## Set up for first row three columns
 col1, col2, col3=st.columns(3) 
@@ -366,12 +374,12 @@ with col7:
               )
               fig, ax = pitch.draw(figsize=(10, 10))
 ## Player forward passes
-              forward = pases.loc[(final['x'] < final['pass_end_x']), ['player', 'x', 'y', 'pass_end_x', 'pass_end_y']]
+              forward = pases.loc[(copa_america_events['x'] < copa_america_events['pass_end_x']), ['player', 'x', 'y', 'pass_end_x', 'pass_end_y']]
               forward = forward[forward['player'] == player]
               pitch.arrows(forward['x'], forward['y'], forward['pass_end_x'], forward['pass_end_y'], label='Passes Forward', color='green', width=2, ax=ax)
 
 ## Player back passes
-              back = pases.loc[(final['x'] > final['pass_end_x']), ['player', 'x', 'y', 'pass_end_x', 'pass_end_y']]
+              back = pases.loc[(copa_america_events['x'] > copa_america_events['pass_end_x']), ['player', 'x', 'y', 'pass_end_x', 'pass_end_y']]
               back = back[back['player'] == player]
               pitch.arrows(back['x'], back['y'], back['pass_end_x'], back['pass_end_y'], label='Passes Forward', color='red', width=2, ax=ax)
 
@@ -394,7 +402,7 @@ with col7:
 ## GOAL/SHOT PASSES
 with col8:
        st.write("GOAL/SHOT PASSES")
-       goal_passes = final.loc[(final['type'].isin(['Pass', 'Shot'])), ['type', 'shot_outcome', 'player', 'pass_recipient', 'index', 'x', 'y', 'pass_end_x', 'pass_end_y']].sort_values(by = 'index')
+       goal_passes = copa_america_events.loc[(copa_america_events['type'].isin(['Pass', 'Shot'])), ['type', 'shot_outcome', 'player', 'pass_recipient', 'index', 'x', 'y', 'pass_end_x', 'pass_end_y']].sort_values(by = 'index')
        goal_passes['shoter'] = goal_passes['player'].shift(-1)
        goal_passes['type_after'] = goal_passes['type'].shift(-1)
        goal_passes['shot_outcome_after'] = goal_passes['shot_outcome'].shift(-1)
