@@ -67,7 +67,7 @@ player = st.selectbox('Select a player', copa_america_events[copa_america_events
 ## Create a filter function
 def filter_data(copa_america_events, team, player):
        if team:
-              copa_america_events  = copa_america_events[copa_america_events['copa_america_events'] == team]
+              copa_america_events  = copa_america_events[copa_america_events['team'] == team]
        if player:
               copa_america_events = copa_america_events[copa_america_events['player'] == player]
        return  copa_america_events
